@@ -5,6 +5,7 @@
 
 from datetime import date
 
+from freezegun import freeze_time
 from psycopg2 import IntegrityError, errors
 
 from odoo import exceptions
@@ -73,6 +74,15 @@ class TestVatProrate(AccountTestInvoicingCommon):
         vat_prorate_line = self.env.company.vat_prorate_ids[0]
         with self.assertRaises(IntegrityError):
             vat_prorate_line.vat_prorate = 200
+
+    def test_company_vat_prorate_default_date(self):
+        # A new prorate line starts today, not the day the server was started
+        with freeze_time("2030-02-15"):
+            self.env.company.vat_prorate_ids = [(0, 0, {"vat_prorate": 50})]
+        vat_prorate_line = self.env.company.vat_prorate_ids.filtered(
+            lambda line: line.vat_prorate == 50
+        )
+        self.assertEqual(vat_prorate_line.date, date(2030, 2, 15))
 
     @mute_logger("odoo.sql_db")
     def test_company_special_vat_prorate_out_of_range(self):
